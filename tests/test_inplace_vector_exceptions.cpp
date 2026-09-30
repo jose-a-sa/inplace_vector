@@ -106,16 +106,24 @@ V::iterator at(V& v, std::size_t i)
 
 struct Op
 {
+    using BinaryOp = void (*)(V&, V&);
     char const* name;
-    std::function<void(V&, V&)> run;
+    BinaryOp run;
 };
 
 std::vector<Op> const& operations()
 {
+    // clang-format off
     static std::vector<Op> const all = {
         {"push_back", [](V& a, V&) { Throwy x(1); a.push_back(x); }},
         {"push_back&&", [](V& a, V&) { a.push_back(Throwy(1)); }},
         {"emplace_back", [](V& a, V&) { a.emplace_back(1); }},
+        {"try_push_back", [](V& a, V&) { Throwy x(1); a.try_push_back(x); }},
+        {"try_push_back&&", [](V& a, V&) { a.try_push_back(Throwy(1)); }},
+        {"try_emplace_back", [](V& a, V&) { a.try_emplace_back(1); }},
+        {"unchecked_push_back", [](V& a, V&) { Throwy x(1); if (a.size() < capacity) a.unchecked_push_back(x); }},
+        {"unchecked_push_back&&", [](V& a, V&) { Throwy x(1); if (a.size() < capacity) a.unchecked_push_back(std::move(x)); }},
+        {"unchecked_emplace_back", [](V& a, V&) { Throwy x(1); if (a.size() < capacity) a.unchecked_emplace_back(x); }},
         {"insert", [](V& a, V&) { Throwy x(1); a.insert(at(a, 1), x); }},
         {"insert&&", [](V& a, V&) { a.insert(at(a, 1), Throwy(1)); }},
         {"insert count", [](V& a, V&) { Throwy x(1); a.insert(at(a, 1), 3, x); }},
@@ -138,6 +146,7 @@ std::vector<Op> const& operations()
         {"range constructor", [](V&, V&) { auto s = make_std(5); V c(s.begin(), s.end()); }},
         {"initializer list constructor", [](V&, V&) { V c{Throwy(1), Throwy(2), Throwy(3)}; }},
     };
+    // clang-format on
     return all;
 }
 
@@ -170,8 +179,7 @@ TEST(InplaceVectorExceptionSafety, EveryOperationKeepsTheVectorValidAtEveryThrow
                         EXPECT_LE(a.size(), capacity);
                         EXPECT_LE(b.size(), capacity);
                     }
-                    ASSERT_EQ(Fuse::live, 0) << "leaked or destroyed twice: " << op.name << " na=" << na
-                                             << " nb=" << nb << " k=" << k;
+                    ASSERT_EQ(Fuse::live, 0) << "leaked or destroyed twice: " << op.name << " na=" << na << " nb=" << nb << " k=" << k;
                 }
 }
 

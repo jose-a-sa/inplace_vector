@@ -481,7 +481,7 @@ protected:
     constexpr void set_size(size_type /* n */) noexcept {}
     constexpr void set_end(const_pointer /* end */) noexcept {}
 
-    void destroy_from_end(pointer /* new_last */) noexcept {}
+    QX_CONSTEXPR_CXX20 void destroy_from_end(pointer /* new_last */) noexcept {}
 };
 
 template <std::size_t N, class T>
@@ -505,7 +505,7 @@ protected:
     constexpr void set_size(size_type n) noexcept { sz_ = n; }
     constexpr void set_end(const_pointer end) noexcept { sz_ = static_cast<size_type>(end - begin()); }
 
-    void destroy_from_end(pointer new_last) noexcept { set_end(new_last); }
+    QX_CONSTEXPR_CXX20 void destroy_from_end(pointer new_last) noexcept { set_end(new_last); }
 
 private:
     size_type sz_;
@@ -528,7 +528,7 @@ struct inplace_vector_storage_nontrivial
         , dummy_{}
     {}
 
-    ~inplace_vector_storage_nontrivial() noexcept { destroy_from_end(begin()); }
+    QX_CONSTEXPR_CXX20 ~inplace_vector_storage_nontrivial() noexcept { destroy_from_end(begin()); }
 
     inplace_vector_storage_nontrivial(inplace_vector_storage_nontrivial const& other)
         : inplace_vector_storage_nontrivial()
@@ -567,7 +567,7 @@ protected:
     constexpr void set_size(size_type n) noexcept { sz_ = n; }
     constexpr void set_end(const_pointer end) noexcept { sz_ = static_cast<size_type>(end - begin()); }
 
-    void destroy_from_end(pointer new_last) noexcept
+    QX_CONSTEXPR_CXX20 void destroy_from_end(pointer new_last) noexcept
     {
         pointer soon_to_be_end = end();
         while (new_last != soon_to_be_end)
@@ -781,19 +781,49 @@ public:
         return *(base::end() - 1);
     }
 
-    constexpr value_type* data() noexcept { return base::begin(); }
-    constexpr value_type const* data() const noexcept { return base::begin(); }
+    constexpr pointer data() noexcept { return base::begin(); }
+    constexpr const_pointer data() const noexcept { return base::begin(); }
 
     reference push_back(value_type const& x) { return emplace_back(x); }
     reference push_back(value_type&& x) { return emplace_back(std::move(x)); }
+
+    pointer try_push_back(value_type const& x) noexcept(std::is_nothrow_copy_constructible_v<T>) { return try_emplace_back(x); }
+    pointer try_push_back(value_type&& x) noexcept(std::is_nothrow_move_constructible_v<T>) { return try_emplace_back(std::move(x)); }
+
+    reference unchecked_push_back(value_type const& x) noexcept(std::is_nothrow_copy_constructible_v<T>)
+    {
+        return unchecked_emplace_back(x);
+    }
+    reference unchecked_push_back(value_type&& x) noexcept(std::is_nothrow_move_constructible_v<T>)
+    {
+        return unchecked_emplace_back(std::move(x));
+    }
 
     template <class... Args>
     reference emplace_back(Args&&... args)
     {
         if (size() < capacity())
-            this->construct_one_at_end(std::forward<Args>(args)...);
+            return unchecked_emplace_back(std::forward<Args>(args)...);
         else
             intl::throw_out_of_capacity("inplace_vector::emplace_back");
+    }
+
+    template <class... Args>
+    pointer try_emplace_back(Args&&... args) noexcept(std::is_nothrow_constructible_v<T, Args...>)
+    {
+        if (size() < capacity())
+        {
+            this->construct_one_at_end(std::forward<Args>(args)...);
+            return base::end() - 1;
+        }
+        return nullptr;
+    }
+
+    template <class... Args>
+    reference unchecked_emplace_back(Args&&... args) noexcept(std::is_nothrow_constructible_v<T, Args...>)
+    {
+        QX_ASSERT_CONTRACT(size() < capacity(), "inplace_vector::unchecked_emplace_back called on a full inplace_vector");
+        this->construct_one_at_end(std::forward<Args>(args)...);
         return *(base::end() - 1);
     }
 
@@ -1000,7 +1030,7 @@ public:
             }
             else if (size2 > size1)
             {
-                pointer new_end = std::uninitialized_move(other.begin() + common, other.begin() + size2, end());
+                pointer new_end = std::uninitialized_move(other.base::begin() + common, other.base::begin() + size2, end());
                 base::set_end(new_end);
                 other.base::destroy_from_end(other.base::begin() + common);
             }
@@ -1014,6 +1044,7 @@ public:
         return a.size() == b.size() && std::equal(a.begin(), a.end(), b.begin());
     }
     friend bool operator!=(inplace_vector const& a, inplace_vector const& b) { return !(a == b); }
+
     friend bool operator<(inplace_vector const& a, inplace_vector const& b)
     {
         return std::lexicographical_compare(a.begin(), a.end(), b.begin(), b.end());
@@ -1086,7 +1117,7 @@ private:
     }
 
     template <class InputIterator, class Sentinel>
-    void assign_with_size(InputIterator first, Sentinel last, difference_type n)
+    QX_CONSTEXPR_CXX20 void assign_with_size(InputIterator first, Sentinel last, difference_type n)
     {
         auto const new_size = static_cast<size_type>(n);
         if (new_size <= capacity())

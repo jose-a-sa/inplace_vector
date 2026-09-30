@@ -118,8 +118,7 @@ TEST(InplaceVectorEmpty, ModifiersOnEmpty)
     EXPECT_TRUE(s.empty());
 
     s.swap(s2);
-    using std::swap;
-    swap(s, s2);
+    std::swap(s, s2);
     EXPECT_TRUE(s.empty());
     EXPECT_TRUE(s2.empty());
 
@@ -147,6 +146,16 @@ TEST(InplaceVectorEmpty, ModifiersFailOutOfBounds)
     EXPECT_TRUE(s.empty());
 }
 
+TEST(InplaceVectorEmpty, TryAppendReturnsNullptr)
+{
+    S s;
+    int const lvalue = 1;
+    EXPECT_EQ(s.try_push_back(lvalue), nullptr);
+    EXPECT_EQ(s.try_push_back(1), nullptr);
+    EXPECT_EQ(s.try_emplace_back(1), nullptr);
+    EXPECT_TRUE(s.empty());
+}
+
 TEST(InplaceVectorEmpty, Compare)
 {
     S s;
@@ -171,6 +180,18 @@ TEST(InplaceVectorEmpty, ExceptionsAndContracts)
         {
             S s;
             (void)s.front();
+        },
+        "contract violation");
+    EXPECT_DEATH(
+        {
+            S s;
+            s.unchecked_push_back(1);
+        },
+        "contract violation");
+    EXPECT_DEATH(
+        {
+            S s;
+            s.unchecked_emplace_back(1);
         },
         "contract violation");
 }

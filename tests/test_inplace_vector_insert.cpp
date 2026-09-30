@@ -220,8 +220,7 @@ TEST(InplaceVectorInsert, InputIteratorOverflowKeepsInsertedPrefixAtPosition)
     qx::inplace_vector<8, int> v = {1, 2, 3, 4, 5, 6}; // room for two
     std::istringstream stream("100 101 102 103");
 
-    EXPECT_THROW(v.insert(v.begin() + 1, std::istream_iterator<int>(stream), std::istream_iterator<int>()),
-        std::length_error);
+    EXPECT_THROW(v.insert(v.begin() + 1, std::istream_iterator<int>(stream), std::istream_iterator<int>()), std::length_error);
     EXPECT_THAT(v, ::testing::ElementsAre(1, 100, 101, 2, 3, 4, 5, 6));
 }
 
