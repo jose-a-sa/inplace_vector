@@ -985,22 +985,25 @@ public:
         if constexpr (N == 0)
             return;
 
-        size_type const size1 = size();
-        size_type const size2 = other.size();
-        size_type const common = std::min(size1, size2);
+        if (*this != &other)
+        {
+            size_type const size1 = size();
+            size_type const size2 = other.size();
+            size_type const common = std::min(size1, size2);
 
-        std::swap_ranges(begin(), begin() + common, other.begin());
-        if (size1 > size2)
-        {
-            pointer new_end = std::uninitialized_move(begin() + common, begin() + size1, other.end());
-            other.base::set_end(new_end);
-            base::destroy_from_end(base::begin() + common);
-        }
-        else if (size2 > size1)
-        {
-            pointer new_end = std::uninitialized_move(other.begin() + common, other.begin() + size2, end());
-            base::set_end(new_end);
-            other.base::destroy_from_end(other.base::begin() + common);
+            std::swap_ranges(begin(), begin() + common, other.begin());
+            if (size1 > size2)
+            {
+                pointer new_end = std::uninitialized_move(begin() + common, begin() + size1, other.end());
+                other.base::set_end(new_end);
+                base::destroy_from_end(base::begin() + common);
+            }
+            else if (size2 > size1)
+            {
+                pointer new_end = std::uninitialized_move(other.begin() + common, other.begin() + size2, end());
+                base::set_end(new_end);
+                other.base::destroy_from_end(other.base::begin() + common);
+            }
         }
     }
 
@@ -1059,10 +1062,10 @@ private:
         pointer old_last = base::end();
         difference_type n = old_last - o_first;
         pointer i = in_first + n;
- 
+
         auto new_end = std::uninitialized_move(i, in_last, old_last);
         base::set_end(new_end);
- 
+
         (void)std::move_backward(in_first, i, old_last);
         return new_end;
     }
