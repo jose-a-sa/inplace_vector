@@ -985,7 +985,7 @@ public:
         if constexpr (N == 0)
             return;
 
-        if (*this != &other)
+        if (this != &other)
         {
             size_type const size1 = size();
             size_type const size2 = other.size();
