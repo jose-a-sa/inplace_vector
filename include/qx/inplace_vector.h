@@ -537,9 +537,11 @@ protected:
     constexpr void set_end(const_pointer /* end */) noexcept {}
     QX_CONSTEXPR_CXX20 void destroy_from_end(pointer /* new_last */) noexcept {}
     template <class Iterator>
-    QX_CONSTEXPR_CXX26 void unchecked_init_with_size(Iterator /* first */, size_type /* n */) {}
+    QX_CONSTEXPR_CXX26 void unchecked_init_with_size(Iterator /* first */, size_type /* n */)
+    {}
     template <class Iterator>
-    QX_CONSTEXPR_CXX26 void unchecked_assign_with_size(Iterator /* first */, size_type /* n */) {}
+    QX_CONSTEXPR_CXX26 void unchecked_assign_with_size(Iterator /* first */, size_type /* n */)
+    {}
 };
 
 template <std::size_t N, class T, bool = std::is_trivially_destructible_v<T>>
@@ -1026,7 +1028,7 @@ public:
         }
         else
         {
-            init_with_sentinel(std::ranges::begin(range), std::ranges::end(range));
+            append_with_sentinel(std::ranges::begin(range), std::ranges::end(range));
         }
     }
 #endif
@@ -1041,7 +1043,7 @@ public:
     QX_CONSTEXPR_CXX26 iterator emplace(const_iterator pos, Args&&... args)
     {
         QX_ASSERT_CONTRACT(begin() <= pos && pos <= end(), "inplace_vector::emplace(iterator, ...) called with an invalid iterator");
-        pointer p = pointer_at_pos(pos);
+        pointer p = pointer_at_position(pos);
         if (size() < capacity())
         {
             if (p == this->end_ptr())
@@ -1065,7 +1067,7 @@ public:
     QX_CONSTEXPR_CXX26 iterator insert(const_iterator pos, const_reference x)
     {
         QX_ASSERT_CONTRACT(begin() <= pos && pos <= end(), "inplace_vector::insert(iterator, x) called with an invalid iterator");
-        pointer p = pointer_at_pos(pos);
+        pointer p = pointer_at_position(pos);
         if (size() < capacity())
         {
             if (p == this->end_ptr())
@@ -1091,7 +1093,7 @@ public:
     QX_CONSTEXPR_CXX26 iterator insert(const_iterator pos, value_type&& x)
     {
         QX_ASSERT_CONTRACT(begin() <= pos && pos <= end(), "inplace_vector::insert(iterator, x) called with an invalid iterator");
-        pointer p = pointer_at_pos(pos);
+        pointer p = pointer_at_position(pos);
         if (size() < capacity())
         {
             if (p == this->end_ptr())
@@ -1114,7 +1116,7 @@ public:
     QX_CONSTEXPR_CXX26 iterator insert(const_iterator pos, size_type n, value_type const& x)
     {
         QX_ASSERT_CONTRACT(begin() <= pos && pos <= end(), "inplace_vector::insert(iterator, n, x) called with an invalid iterator");
-        pointer p = pointer_at_pos(pos);
+        pointer p = pointer_at_position(pos);
         if (n > 0)
         {
             if (n <= capacity() - size())
@@ -1184,7 +1186,7 @@ public:
     QX_CONSTEXPR_CXX20 iterator erase(const_iterator pos)
     {
         QX_ASSERT_CONTRACT(begin() <= pos && pos < end(), "inplace_vector::erase(iterator) called with a non-dereferenceable iterator");
-        pointer p = pointer_at_pos(pos);
+        pointer p = pointer_at_position(pos);
         this->destroy_from_end(std::move(p + 1, this->end_ptr(), p));
         return iterator(p);
     }
@@ -1193,7 +1195,7 @@ public:
     {
         QX_ASSERT_CONTRACT(
             begin() <= first && first <= last && last <= end(), "inplace_vector::erase(first, last) called with invalid range");
-        pointer p = pointer_at_pos(first);
+        pointer p = pointer_at_position(first);
         if (first != last)
         {
             this->destroy_from_end(std::move(p + (last - first), this->end_ptr(), p));
@@ -1293,7 +1295,7 @@ public:
 #endif
 
 private:
-    constexpr pointer pointer_at_pos(const_iterator pos) noexcept { return this->begin_ptr() + (pos - begin()); }
+    constexpr pointer pointer_at_position(const_iterator pos) noexcept { return this->begin_ptr() + (pos - begin()); }
 
     template <class... Args>
     QX_CONSTEXPR_CXX26 void construct_one_at_end(Args&&... args)
@@ -1361,6 +1363,22 @@ private:
     }
 
     template <class InputIterator, class Sentinel>
+    QX_CONSTEXPR_CXX26 void append_with_sentinel(InputIterator first, Sentinel last)
+    {
+        pointer const old_end = this->end_ptr();
+        try
+        {
+            for (; first != last; ++first)
+                emplace_back(*first);
+        }
+        catch (...)
+        {
+            this->destroy_from_end(old_end);
+            throw;
+        }
+    }
+
+    template <class InputIterator, class Sentinel>
     QX_CONSTEXPR_CXX20 void assign_with_size(InputIterator first, Sentinel /*last*/, difference_type n)
     {
         auto const new_size = static_cast<size_type>(n);
@@ -1395,7 +1413,8 @@ private:
     template <class InputIterator, class Sentinel>
     QX_CONSTEXPR_CXX26 iterator insert_with_sentinel(const_iterator pos, InputIterator first, Sentinel last)
     {
-        pointer p = pointer_at_pos(pos);
+        QX_ASSERT_CONTRACT(begin() <= pos && pos <= end(), "inplace_vector::insert(pos, first, last) called with invalid pos");
+        pointer p = pointer_at_position(pos);
         pointer old_last = this->end_ptr();
         for (; size() != capacity() && first != last; ++first)
             this->construct_one_at_end(*first);
@@ -1410,7 +1429,8 @@ private:
     template <class Iterator, class Sentinel>
     QX_CONSTEXPR_CXX26 iterator insert_with_size(const_iterator pos, Iterator first, Sentinel last, difference_type n)
     {
-        pointer p = pointer_at_pos(pos);
+        QX_ASSERT_CONTRACT(begin() <= pos && pos <= end(), "inplace_vector::insert(pos, first, last) called with invalid pos");
+        pointer p = pointer_at_position(pos);
         if (n > 0)
         {
             if (static_cast<size_type>(n) <= capacity() - size())

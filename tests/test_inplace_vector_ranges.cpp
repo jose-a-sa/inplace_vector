@@ -240,17 +240,21 @@ TYPED_TEST(InplaceVectorRanges, AppendRangeOverflow)
     using T = TypeParam;
     auto const ids = seq(4, 100);
 
+    // Forward range: overflow is detected before modifying the destination.
     auto a = make<T>(4);
-    EXPECT_THROW(a.append_range(ids), std::length_error); // 4 + 4 > cap: forward ranges are sized up front, nothing changes
+    EXPECT_THROW(a.append_range(ids), std::length_error);
     EXPECT_EQ(ids_of(a), seq(4));
 
+    // Single-pass range: overflow must not leave a partial append.
     auto b = make<T>(4);
     auto in = stream_of(ids);
-    EXPECT_THROW(b.append_range(stream_view(in)), std::length_error); // single-pass: what fit was kept, no staging buffer
-    EXPECT_EQ(ids_of(b), (std::vector<int>{1, 2, 3, 4, 100, 101}));
+    EXPECT_THROW(b.append_range(stream_view(in)), std::length_error);
+    EXPECT_EQ(ids_of(b), seq(4));
 
+    // Empty ranges fit even when the destination is full.
     auto c = make<T>(cap);
-    EXPECT_NO_THROW(c.append_range(std::vector<int>{})); // an empty range fits in a full vector
+    EXPECT_NO_THROW(c.append_range(std::vector<int>{}));
+
     auto in2 = stream_of({});
     EXPECT_NO_THROW(c.append_range(stream_view(in2)));
     EXPECT_EQ(ids_of(c), seq(cap));
