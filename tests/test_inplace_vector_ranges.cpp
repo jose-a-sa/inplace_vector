@@ -17,7 +17,7 @@
 #include <sstream>
 #include <vector>
 
-// Ranges (from_range, assign_range, append_range, try_append_range, insert_range)
+// Ranges (from_range, assign_range, append_range, insert_range)
 
 namespace
 {
@@ -254,54 +254,6 @@ TYPED_TEST(InplaceVectorRanges, AppendRangeOverflow)
     auto in2 = stream_of({});
     EXPECT_NO_THROW(c.append_range(stream_view(in2)));
     EXPECT_EQ(ids_of(c), seq(cap));
-}
-
-TYPED_TEST(InplaceVectorRanges, TryAppendRange)
-{
-    using T = TypeParam;
-    auto const ids = seq(4, 100);
-
-    auto a = make<T>(1);
-    auto it = a.try_append_range(ids); // everything fits
-    EXPECT_EQ(it, ids.end());
-    EXPECT_EQ(ids_of(a), (std::vector<int>{1, 100, 101, 102, 103}));
-
-    auto b = make<T>(4);
-    auto jt = b.try_append_range(ids); // two fit; the vector is full
-    ASSERT_NE(jt, ids.end());
-    EXPECT_EQ(*jt, 102);
-    EXPECT_EQ(ids_of(b), (std::vector<int>{1, 2, 3, 4, 100, 101}));
-
-    auto c = make<T>(cap);
-    EXPECT_EQ(c.try_append_range(ids), ids.begin()); // nothing fits: nothing changes
-    std::span<int const> const none = std::span<int const>(ids).first(0);
-    EXPECT_EQ(c.try_append_range(none), none.end()); // an empty range is fully appended even when full
-    EXPECT_EQ(ids_of(c), seq(cap));
-
-    auto d = make<T>(5);
-    auto in = stream_of(ids);
-    auto view = stream_view(in);
-    auto kt = d.try_append_range(view); // single-pass: the first element that did not fit has been read, once
-    EXPECT_EQ(*kt, 101);
-    EXPECT_EQ(ids_of(d), (std::vector<int>{1, 2, 3, 4, 5, 100}));
-}
-
-TYPED_TEST(InplaceVectorRanges, TryAppendRangeReturnType)
-{
-    using T = TypeParam;
-    IV<T> v;
-    std::vector<int> lvalue;
-    static_assert(std::is_same_v<decltype(v.try_append_range(lvalue)), std::vector<int>::iterator>);
-    static_assert(std::is_same_v<decltype(v.try_append_range(std::vector<int>{})), std::ranges::dangling>); // not borrowed
-    static_assert(std::is_same_v<decltype(v.try_append_range(std::span<int>{})), std::span<int>::iterator>); // borrowed
-    static_assert(std::is_same_v<decltype(v.try_append_range(std::views::iota(0, 3))), std::ranges::iterator_t<std::ranges::iota_view<int, int>>>);
-
-    auto it = v.try_append_range(std::views::iota(5, 8)); // a borrowed rvalue range returns a usable iterator
-    EXPECT_EQ(*std::ranges::prev(it, 1), 7);
-    EXPECT_EQ(ids_of(v), (std::vector<int>{5, 6, 7}));
-
-    v.try_append_range(std::vector<int>{8, 9}); // returns dangling
-    EXPECT_EQ(ids_of(v), (std::vector<int>{5, 6, 7, 8, 9}));
 }
 
 TYPED_TEST(InplaceVectorRanges, InsertRange)

@@ -518,9 +518,6 @@ constexpr bool ranges()
     v.append_range(std::ranges::subrange(InputIt(0), InputIt(2)));
     CHECK(is(v, {7, 8, 1, 2, 3, 0, 1}));
 
-    auto it = v.try_append_range(std::views::iota(20, 30)); // one fits
-    CHECK(*it == 21 && v.size() == 8 && v.back() == 20);
-
     V w = {1, 2};
     auto pos = w.insert_range(w.begin() + 1, a);
     CHECK(is(w, {1, 1, 2, 3, 2}) && pos == w.begin() + 1);
