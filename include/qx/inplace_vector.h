@@ -529,7 +529,7 @@ struct inplace_vector_empty_base
     using const_pointer = T const*;
 
 protected:
-    constexpr size_type size() const noexcept { return 0; }
+    constexpr size_type get_size() const noexcept { return 0; }
     constexpr pointer begin_ptr() noexcept { return nullptr; }
     constexpr const_pointer begin_ptr() const noexcept { return nullptr; }
     constexpr pointer end_ptr() noexcept { return nullptr; }
@@ -537,11 +537,9 @@ protected:
     constexpr void set_end(const_pointer /* end */) noexcept {}
     QX_CONSTEXPR_CXX20 void destroy_from_end(pointer /* new_last */) noexcept {}
     template <class Iterator>
-    QX_CONSTEXPR_CXX26 void unchecked_init_with_size(Iterator /* first */, size_type /* n */)
-    {}
+    QX_CONSTEXPR_CXX26 void unchecked_init_with_size(Iterator /* first */, size_type /* n */) {}
     template <class Iterator>
-    QX_CONSTEXPR_CXX26 void unchecked_assign_with_size(Iterator /* first */, size_type /* n */)
-    {}
+    QX_CONSTEXPR_CXX26 void unchecked_assign_with_size(Iterator /* first */, size_type /* n */) {}
 };
 
 template <std::size_t N, class T, bool = std::is_trivially_destructible_v<T>>
@@ -578,7 +576,7 @@ struct inplace_vector_storage
     constexpr inplace_vector_storage() noexcept = default;
 
 protected:
-    constexpr size_type size() const noexcept { return sz_; }
+    constexpr size_type get_size() const noexcept { return sz_; }
     constexpr pointer begin_ptr() noexcept { return arr_.data; }
     constexpr const_pointer begin_ptr() const noexcept { return arr_.data; }
     constexpr pointer end_ptr() noexcept { return arr_.data + sz_; }
@@ -606,15 +604,15 @@ protected:
     template <class Iterator>
     QX_CONSTEXPR_CXX26 void unchecked_assign_with_size(Iterator first, size_type n)
     {
-        if (n > size())
+        if (n > get_size())
         {
 #if QX_WITH_CXX23_RANGES
-            auto [mid_in, mid_out] = std::ranges::copy_n(std::move(__first), size(), begin_ptr());
+            auto [mid_in, mid_out] = std::ranges::copy_n(std::move(first), get_size(), begin_ptr());
 #else
-            Iterator mid_in = std::next(first, size());
+            Iterator mid_in = std::next(first, get_size());
             auto mid_out = std::copy(first, mid_in, begin_ptr());
 #endif
-            pointer new_end = std::uninitialized_copy_n(std::move(mid_in), n - size(), mid_out);
+            pointer new_end = std::uninitialized_copy_n(std::move(mid_in), n - get_size(), mid_out);
             set_end(new_end);
         }
         else
@@ -661,7 +659,7 @@ struct inplace_vector_copy_ctor_base<N, T, /*is_trivially_destructible=*/false> 
     QX_CONSTEXPR_CXX26 inplace_vector_copy_ctor_base(inplace_vector_copy_ctor_base const& other)
         : inplace_vector_dtor_base<N, T>()
     {
-        this->unchecked_init_with_size(other.begin_ptr(), other.size());
+        this->unchecked_init_with_size(other.begin_ptr(), other.get_size());
     }
     inplace_vector_copy_ctor_base(inplace_vector_copy_ctor_base&&) = default;
     inplace_vector_copy_ctor_base& operator=(inplace_vector_copy_ctor_base const&) = default;
@@ -685,7 +683,7 @@ struct inplace_vector_move_ctor_base<N, T, /*is_trivially_destructible=*/false> 
         std::is_nothrow_move_constructible_v<T>)
         : inplace_vector_copy_ctor_base<N, T>()
     {
-        this->unchecked_init_with_size(std::make_move_iterator(other.begin_ptr()), other.size());
+        this->unchecked_init_with_size(std::make_move_iterator(other.begin_ptr()), other.get_size());
     }
     inplace_vector_move_ctor_base& operator=(inplace_vector_move_ctor_base const&) = default;
     inplace_vector_move_ctor_base& operator=(inplace_vector_move_ctor_base&&) = default;
@@ -715,7 +713,7 @@ struct inplace_vector_copy_assign_base<N, T, /*is_trivially_destructible=*/false
     QX_CONSTEXPR_CXX26 inplace_vector_copy_assign_base& operator=(inplace_vector_copy_assign_base const& other)
     {
         if (this != &other)
-            this->unchecked_assign_with_size(other.begin_ptr(), other.size());
+            this->unchecked_assign_with_size(other.begin_ptr(), other.get_size());
         return *this;
     }
     inplace_vector_copy_assign_base& operator=(inplace_vector_copy_assign_base&&) = default;
@@ -743,7 +741,7 @@ struct inplace_vector_move_assign_base<N, T, /*is_trivially_destructible=*/false
         std::is_nothrow_move_assignable_v<T> && std::is_nothrow_move_constructible_v<T>)
     {
         if (this != &other)
-            this->unchecked_assign_with_size(std::make_move_iterator(other.begin_ptr()), other.size());
+            this->unchecked_assign_with_size(std::make_move_iterator(other.begin_ptr()), other.get_size());
         return *this;
     }
     QX_CONSTEXPR_CXX20 ~inplace_vector_move_assign_base() = default;
@@ -904,7 +902,7 @@ public:
     constexpr const_reverse_iterator crbegin() const noexcept { return rbegin(); }
     constexpr const_reverse_iterator crend() const noexcept { return rend(); }
 
-    constexpr size_type size() const noexcept { return base::size(); }
+    constexpr size_type size() const noexcept { return this->get_size(); }
     static constexpr size_type max_size() noexcept { return N; }
     static constexpr size_type capacity() noexcept { return N; }
     constexpr bool empty() const noexcept { return size() == 0; }
