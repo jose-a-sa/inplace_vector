@@ -82,6 +82,57 @@ struct Noisy
     }
 };
 
+// Trivially destructible, but its copy constructor is user-provided (and counted): the container must stay trivially
+// destructible while copying it element by element.
+struct CopyCounted
+{
+    static inline int copies = 0;
+
+    int id;
+
+    CopyCounted(int i = 0)
+        : id(i)
+    {}
+    CopyCounted(CopyCounted const& o)
+        : id(o.id)
+    {
+        ++copies;
+    }
+    CopyCounted& operator=(CopyCounted const&) = default;
+
+    friend bool operator==(CopyCounted const& a, CopyCounted const& b) { return a.id == b.id; }
+    friend bool operator<(CopyCounted const& a, CopyCounted const& b) { return a.id < b.id; }
+};
+
+// The opposite pairing: trivially copy constructible/assignable, but its move constructor is user-provided (and counted).
+struct MoveCounted
+{
+    static inline int moves = 0;
+
+    int id;
+
+    MoveCounted(int i = 0)
+        : id(i)
+    {}
+    MoveCounted(MoveCounted const&) = default;
+    MoveCounted(MoveCounted&& o) noexcept
+        : id(o.id)
+    {
+        ++moves;
+    }
+    MoveCounted& operator=(MoveCounted const&) = default;
+    MoveCounted& operator=(MoveCounted&&) = default;
+
+    friend bool operator==(MoveCounted const& a, MoveCounted const& b) { return a.id == b.id; }
+    friend bool operator<(MoveCounted const& a, MoveCounted const& b) { return a.id < b.id; }
+};
+
+// The identity of an element of any of the test element types.
+inline int id_of(int x) { return x; }
+inline int id_of(Tracked const& t) { return t.id; }
+inline int id_of(CopyCounted const& t) { return t.id; }
+inline int id_of(MoveCounted const& t) { return t.id; }
+
 namespace intl_test
 {
 
