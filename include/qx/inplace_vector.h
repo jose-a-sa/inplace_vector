@@ -112,7 +112,7 @@
 #endif
 
 #ifndef QX_CONSTEXPR_CXX26
-#if __cplusplus >= 202602L
+#if __cplusplus >= 202400L
 #define QX_CONSTEXPR_CXX26 constexpr
 #else
 #define QX_CONSTEXPR_CXX26
@@ -179,7 +179,8 @@
 #endif
 
 #ifndef QX_WITH_CXX23_RANGES
-#if defined(__cpp_lib_ranges) && __cpp_lib_ranges >= 202207L
+#if defined(__cpp_lib_ranges) && __cpp_lib_ranges >= 202207L && defined(__cpp_lib_ranges_to_container) &&                                  \
+    __cpp_lib_ranges_to_container >= 202202L
 #define QX_WITH_CXX23_RANGES 1
 #include <ranges>
 #else
