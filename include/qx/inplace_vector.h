@@ -600,7 +600,7 @@ protected:
     template <class Iterator>
     QX_CONSTEXPR_CXX26 void unchecked_init_with_size(Iterator first, size_type n)
     {
-        auto const new_end = std::uninitialized_copy_n(std::move(first), n, begin_ptr());
+        pointer const new_end = std::uninitialized_copy_n(std::move(first), n, begin_ptr());
         set_end(new_end);
     }
 
@@ -610,17 +610,17 @@ protected:
         if (n > get_size())
         {
 #if QX_WITH_CXX23_RANGES
-            auto [mid_in, mid_out] = std::ranges::copy_n(std::move(first), get_size(), begin_ptr());
+            auto const [mid_in, mid_out] = std::ranges::copy_n(std::move(first), get_size(), begin_ptr());
 #else
-            Iterator mid_in = std::next(first, get_size());
-            auto mid_out = std::copy(first, mid_in, begin_ptr());
+            Iterator const mid_in = std::next(first, get_size());
+            auto const mid_out = std::copy(first, mid_in, begin_ptr());
 #endif
-            pointer new_end = std::uninitialized_copy_n(std::move(mid_in), n - get_size(), mid_out);
+            pointer const new_end = std::uninitialized_copy_n(std::move(mid_in), n - get_size(), mid_out);
             set_end(new_end);
         }
         else
         {
-            pointer m = std::copy_n(std::move(first), n, begin_ptr());
+            pointer const m = std::copy_n(std::move(first), n, begin_ptr());
             destroy_from_end(m);
         }
     }
@@ -875,7 +875,7 @@ public:
     {
         if (n <= capacity())
         {
-            size_type sz = size();
+            size_type const sz = size();
             std::fill_n(this->begin_ptr(), std::min(n, sz), u);
             if (n > sz)
                 this->construct_at_end(n - sz, u);
@@ -1014,6 +1014,7 @@ public:
     }
 
 #if QX_WITH_CXX23_RANGES
+
     template <class Range>
         requires std::ranges::input_range<Range> && std::constructible_from<T, std::ranges::range_reference_t<Range>>
     constexpr void append_range(Range&& range)
@@ -1029,10 +1030,11 @@ public:
         }
         else
         {
-            append_with_sentinel(std::ranges::begin(range), std::ranges::end(range));
+            init_with_sentinel(std::ranges::begin(range), std::ranges::end(range));
         }
     }
-#endif
+
+#endif // QX_WITH_CXX23_RANGES
 
     QX_CONSTEXPR_CXX20 void pop_back() noexcept
     {
@@ -1044,7 +1046,7 @@ public:
     QX_CONSTEXPR_CXX26 iterator emplace(const_iterator pos, Args&&... args)
     {
         QX_ASSERT_CONTRACT(begin() <= pos && pos <= end(), "inplace_vector::emplace(iterator, ...) called with an invalid iterator");
-        pointer p = pointer_at_position(pos);
+        pointer const p = pointer_at_position(pos);
         if (size() < capacity())
         {
             if (p == this->end_ptr())
@@ -1068,7 +1070,7 @@ public:
     QX_CONSTEXPR_CXX26 iterator insert(const_iterator pos, const_reference x)
     {
         QX_ASSERT_CONTRACT(begin() <= pos && pos <= end(), "inplace_vector::insert(iterator, x) called with an invalid iterator");
-        pointer p = pointer_at_position(pos);
+        pointer const p = pointer_at_position(pos);
         if (size() < capacity())
         {
             if (p == this->end_ptr())
@@ -1094,7 +1096,7 @@ public:
     QX_CONSTEXPR_CXX26 iterator insert(const_iterator pos, value_type&& x)
     {
         QX_ASSERT_CONTRACT(begin() <= pos && pos <= end(), "inplace_vector::insert(iterator, x) called with an invalid iterator");
-        pointer p = pointer_at_position(pos);
+        pointer const p = pointer_at_position(pos);
         if (size() < capacity())
         {
             if (p == this->end_ptr())
@@ -1117,17 +1119,17 @@ public:
     QX_CONSTEXPR_CXX26 iterator insert(const_iterator pos, size_type n, value_type const& x)
     {
         QX_ASSERT_CONTRACT(begin() <= pos && pos <= end(), "inplace_vector::insert(iterator, n, x) called with an invalid iterator");
-        pointer p = pointer_at_position(pos);
+        pointer const p = pointer_at_position(pos);
         if (n > 0)
         {
             if (n <= capacity() - size())
             {
-                size_type old_n = n;
-                pointer old_last = this->end_ptr();
-                auto off = static_cast<size_type>(old_last - p);
+                size_type const old_n = n;
+                pointer const old_last = this->end_ptr();
+                auto const off = static_cast<size_type>(old_last - p);
                 if (n > off)
                 {
-                    size_type cx = n - off;
+                    size_type const cx = n - off;
                     this->construct_at_end(cx, x);
                     n -= cx;
                 }
@@ -1153,7 +1155,7 @@ public:
     {
         if constexpr (is_valid_iter_with_category_v<InputIterator, std::forward_iterator_tag>)
         {
-            auto n = static_cast<size_type>(std::distance(first, last));
+            auto const n = static_cast<size_type>(std::distance(first, last));
             return insert_with_size(pos, std::move(first), std::move(last), n);
         }
         else
@@ -1163,6 +1165,7 @@ public:
     }
 
 #if QX_WITH_CXX23_RANGES
+
     template <class Range>
         requires std::ranges::input_range<Range> && std::constructible_from<T, std::ranges::range_reference_t<Range>>
     constexpr iterator insert_range(const_iterator pos, Range&& range)
@@ -1177,7 +1180,8 @@ public:
             return insert_with_sentinel(pos, std::ranges::begin(range), std::ranges::end(range));
         }
     }
-#endif
+    
+#endif // QX_WITH_CXX23_RANGES
 
     QX_CONSTEXPR_CXX26 iterator insert(const_iterator pos, std::initializer_list<value_type> il)
     {
@@ -1187,7 +1191,7 @@ public:
     QX_CONSTEXPR_CXX20 iterator erase(const_iterator pos)
     {
         QX_ASSERT_CONTRACT(begin() <= pos && pos < end(), "inplace_vector::erase(iterator) called with a non-dereferenceable iterator");
-        pointer p = pointer_at_position(pos);
+        pointer const p = pointer_at_position(pos);
         this->destroy_from_end(std::move(p + 1, this->end_ptr(), p));
         return iterator(p);
     }
@@ -1196,7 +1200,7 @@ public:
     {
         QX_ASSERT_CONTRACT(
             begin() <= first && first <= last && last <= end(), "inplace_vector::erase(first, last) called with invalid range");
-        pointer p = pointer_at_position(first);
+        pointer const p = pointer_at_position(first);
         if (first != last)
         {
             this->destroy_from_end(std::move(p + (last - first), this->end_ptr(), p));
@@ -1270,31 +1274,6 @@ public:
         }
     }
 
-    friend QX_CONSTEXPR_CXX26 void swap(inplace_vector& a, inplace_vector& b) noexcept(noexcept(a.swap(b))) { a.swap(b); }
-
-    friend QX_CONSTEXPR_CXX20 bool operator==(inplace_vector const& a, inplace_vector const& b)
-    {
-        return a.size() == b.size() && std::equal(a.begin(), a.end(), b.begin());
-    }
-
-#if QX_WITH_THREE_WAY
-    friend constexpr auto operator<=>(inplace_vector const& a, inplace_vector const& b)
-        requires std::is_invocable_v<intl::synth_three_way, T const&, T const&>
-    {
-        return std::lexicographical_compare_three_way(a.begin(), a.end(), b.begin(), b.end(), intl::synth_three_way{});
-    }
-#else
-    friend QX_CONSTEXPR_CXX20 bool operator!=(inplace_vector const& a, inplace_vector const& b) { return !(a == b); }
-
-    friend QX_CONSTEXPR_CXX20 bool operator<(inplace_vector const& a, inplace_vector const& b)
-    {
-        return std::lexicographical_compare(a.begin(), a.end(), b.begin(), b.end());
-    }
-    friend QX_CONSTEXPR_CXX20 bool operator>(inplace_vector const& a, inplace_vector const& b) { return b < a; }
-    friend QX_CONSTEXPR_CXX20 bool operator<=(inplace_vector const& a, inplace_vector const& b) { return !(b < a); }
-    friend QX_CONSTEXPR_CXX20 bool operator>=(inplace_vector const& a, inplace_vector const& b) { return !(a < b); }
-#endif
-
 private:
     constexpr pointer pointer_at_position(const_iterator pos) noexcept { return this->begin_ptr() + (pos - begin()); }
 
@@ -1350,21 +1329,6 @@ private:
 
     template <class InputIterator, class Sentinel>
     QX_CONSTEXPR_CXX26 void init_with_sentinel(InputIterator first, Sentinel last)
-    {
-        try
-        {
-            for (; first != last; ++first)
-                emplace_back(*first);
-        }
-        catch (...)
-        {
-            clear();
-            throw;
-        }
-    }
-
-    template <class InputIterator, class Sentinel>
-    QX_CONSTEXPR_CXX26 void append_with_sentinel(InputIterator first, Sentinel last)
     {
         pointer const old_end = this->end_ptr();
         try
@@ -1463,8 +1427,63 @@ private:
     }
 };
 
+template <std::size_t N, class T>
+QX_CONSTEXPR_CXX26 void swap(inplace_vector<N, T>& a, inplace_vector<N, T>& b) noexcept(noexcept(a.swap(b)))
+{
+    a.swap(b);
+}
+
+template <std::size_t N, class T>
+QX_CONSTEXPR_CXX20 bool operator==(inplace_vector<N, T> const& a, inplace_vector<N, T> const& b)
+{
+    return a.size() == b.size() && std::equal(a.begin(), a.end(), b.begin());
+}
+
+#if QX_WITH_THREE_WAY
+
+template <std::size_t N, class T>
+constexpr auto operator<=>(inplace_vector<N, T> const& a, inplace_vector<N, T> const& b)
+    requires std::is_invocable_v<intl::synth_three_way, T const&, T const&>
+{
+    return std::lexicographical_compare_three_way(a.begin(), a.end(), b.begin(), b.end(), intl::synth_three_way{});
+}
+
+#else // QX_WITH_THREE_WAY
+
+template <std::size_t N, class T>
+QX_CONSTEXPR_CXX20 bool operator!=(inplace_vector<N, T> const& a, inplace_vector<N, T> const& b)
+{
+    return !(a == b);
+}
+
+template <std::size_t N, class T>
+QX_CONSTEXPR_CXX20 bool operator<(inplace_vector<N, T> const& a, inplace_vector<N, T> const& b)
+{
+    return std::lexicographical_compare(a.begin(), a.end(), b.begin(), b.end());
+}
+
+template <std::size_t N, class T>
+QX_CONSTEXPR_CXX20 bool operator>(inplace_vector<N, T> const& a, inplace_vector<N, T> const& b)
+{
+    return b < a;
+}
+
+template <std::size_t N, class T>
+QX_CONSTEXPR_CXX20 bool operator<=(inplace_vector<N, T> const& a, inplace_vector<N, T> const& b)
+{
+    return !(b < a);
+}
+
+template <std::size_t N, class T>
+QX_CONSTEXPR_CXX20 bool operator>=(inplace_vector<N, T> const& a, inplace_vector<N, T> const& b)
+{
+    return !(a < b);
+}
+
+#endif // QX_WITH_THREE_WAY
+
 template <std::size_t N, class T, class U = T>
-QX_CONSTEXPR_CXX20 typename inplace_vector<N, T>::size_type erase(inplace_vector<N, T>& c, U const& value)
+QX_CONSTEXPR_CXX20 auto erase(inplace_vector<N, T>& c, U const& value)
 {
     auto const it = std::remove(c.begin(), c.end(), value);
     auto const removed = static_cast<typename inplace_vector<N, T>::size_type>(c.end() - it);
@@ -1473,7 +1492,7 @@ QX_CONSTEXPR_CXX20 typename inplace_vector<N, T>::size_type erase(inplace_vector
 }
 
 template <std::size_t N, class T, class Predicate>
-QX_CONSTEXPR_CXX20 typename inplace_vector<N, T>::size_type erase_if(inplace_vector<N, T>& c, Predicate pred)
+QX_CONSTEXPR_CXX20 auto erase_if(inplace_vector<N, T>& c, Predicate pred)
 {
     auto const it = std::remove_if(c.begin(), c.end(), pred);
     auto const removed = static_cast<typename inplace_vector<N, T>::size_type>(c.end() - it);
